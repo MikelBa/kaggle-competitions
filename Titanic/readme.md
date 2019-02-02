@@ -92,13 +92,13 @@ lapply(titanic, function(x) length(unique(x)))
 ## $Embarked
 ## [1] 4
 ```
-La variable categ?rica *"PassengerId"* tiene un valor diferente para cada pasajero y en pricipio la descartamos porque no nos aporta ninguna informaci?n (habr?a que preguntar como se creo esa variable para saber si puede contener alguna informaci?n). Vamos a hacer lo mismo con la variable categ?rica *"Ticket"* porque tiene 681 valores diferentes. Con *"Name"* no lo vamos a hacer todav?a porque podemos extraer informaci?n.
+La variable categórica *"PassengerId"* tiene un valor diferente para cada pasajero y en pricipio la descartamos porque no nos aporta ninguna información (habría que preguntar como se creo esa variable para saber si puede contener alguna información). Vamos a hacer lo mismo con la variable categórica *"Ticket"* porque tiene 681 valores diferentes. Con *"Name"* no lo vamos a hacer todavía porque podemos extraer información.
 
 ```r
 titanic <- subset(titanic, select = -c(PassengerId, Ticket))
 ```
 
-Estudiamos tambi?n, cuantos valores perdidos hay en cada variable.
+Estudiamos también, cuantos valores perdidos hay en cada variable.
 
 ```r
 sapply(titanic, function(x) sum(is.na(x)))
@@ -111,14 +111,14 @@ sapply(titanic, function(x) sum(is.na(x)))
 ##      687        2
 ```
 
-Vamos a quitar la variable *"Cabin"* porque tiene muchos valores perdidos y no sabemos como se podr?an imputar.
+Vamos a quitar la variable *"Cabin"* porque tiene muchos valores perdidos y no sabemos como se podrían imputar.
 
 ```r
 titanic <- subset(titanic, select = -c(Cabin))
 ```
 
 
-## Extraer informaci?n de *Name* y crear la nueva variable *"Title"*
+## Extraer información de *Name* y crear la nueva variable *"Title"*
 
 ```r
 # Extraer el t?tulo del nombre
@@ -161,7 +161,7 @@ table(titanic$Sex, titanic$Title)
 ##   male       40    0 517   0         20
 ```
 
-Ya hemos extraido informaci?n de la variable *"Name"* y no nos hace falta m?s.
+Ya hemos extraido información de la variable *"Name"* y no nos hace falta más.
 
 ```r
 titanic <- subset(titanic, select = -c(Name))
@@ -201,7 +201,7 @@ table(titanic$Embarked)
 ## 168  77 644
 ```
 
-Vamos a inferir estos dos valores usando la informaci?n de las variables *"Fare"* y *"Pclass"*, que puede que sea la m?s relevante.
+Vamos a inferir estos dos valores usando la información de las variables *"Fare"* y *"Pclass"*, que puede que sea la más relevante.
 
 ```r
 (indexes <- which(is.na(titanic$Embarked)))
@@ -235,7 +235,7 @@ title(main = "Fare dependiendo de Embarked para los pasajeros de Pclass=1")
 abline(h=80, col="red")
 ```
 
-![](Introduccion_Caret_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
+![](figuras/unnamed-chunk-12-1.png)<!-- -->
 Como podemos ver, el valor que mejor se ajusta es "C". Por lo tanto,
 
 ```r
@@ -248,16 +248,16 @@ sum(is.na(titanic$Embarked))
 ## [1] 0
 ```
 
-## Creamos algunas nuevas variables m?s
+## Creamos algunas nuevas variables más
 ### La nueva variable *"FSize"*
-Vamos a crear una variable que nos dija el tama?o de la familia de cada pasajero, incluyendo en ese valor al pasajero.
+Vamos a crear una variable que nos dija el tamaño de la familia de cada pasajero, incluyendo en ese valor al pasajero.
 
 ```r
 titanic$Fsize <- titanic$SibSp + titanic$Parch + 1
 ```
 
 ### La nueva variable *"Child"*
-Esta variable nos indicar? si el pasajero es un ni?o o un adulto.
+Esta variable nos indicará si el pasajero es un niño o un adulto.
 
 ```r
 titanic$Child[titanic$Age < 18] <- 'Child'
@@ -266,7 +266,7 @@ titanic$Child  <- factor(titanic$Child)
 ```
 
 ### La nueva variable *"Mother"*
-Esta variable nos indicar? si la pasajera es madre o no.
+Esta variable nos indicará si la pasajera es madre o no.
 
 ```r
 titanic$Mother <- 'Not Mother'
@@ -275,7 +275,7 @@ titanic$Mother[titanic$Sex == 'female' & titanic$Parch > 0 &
 titanic$Mother <- factor(titanic$Mother)
 ```
 
-# An?lisis descriptivo
+# Análisis descriptivo
 
 
 ```r
@@ -374,7 +374,7 @@ for (i in (1:dim(titanic)[2])[-c(4,7)]) {
 ## 0.062 0.938
 ```
 
-Para las variables *Age* y *Fare* vamos a dibujar el histograma y la diagrama de cajas que nos dan informaci?n de una forma m?s visual.
+Para las variables *Age* y *Fare* vamos a dibujar el histograma y la diagrama de cajas que nos dan información de una forma más visual.
 
 ```r
 par(mfrow=c(1,2))
@@ -396,8 +396,8 @@ par(mfrow=c(1,1))
 ```
 
 
-# Creaci?n de los modelos con el paquete Caret
-Antes de aprender un modelo de clasificaci?n es necesario definir las instancias de entrenamiento y test, que dar?n forma a nuestro modelado. Hay tres opciones de para definir estas instancias.
+# Creación de los modelos con el paquete Caret
+Antes de aprender un modelo de clasificación es necesario definir las instancias de entrenamiento y test, que darán forma a nuestro modelado. Hay tres opciones de para definir estas instancias.
 
 ```r
 ?createDataPartition
@@ -411,7 +411,7 @@ Antes de aprender un modelo de clasificaci?n es necesario definir las instancias
 # A series of test/training partitions are created using createDataPartition while createResample creates one or more bootstrap samples. createFolds splits the data into k groups while createTimeSlices creates cross-validation split for series data. groupKFold splits the data based on a grouping factor.
 ```
 
-Creamos los conjuntos de *train* y *test* con la funci?n *createDataPartition* y la relaci?n de porcentaje de conjunto de datos para cada conjunto sera 70/30.
+Creamos los conjuntos de *train* y *test* con la funci?n *createDataPartition* y la relación de porcentaje de conjunto de datos para cada conjunto sera 70/30.
 
 (Fijamos una semilla para futuras generaciones de numeros aleatorios)
 
@@ -461,7 +461,7 @@ rf_Model10x10cv
 ## The final value used for the model was mtry = 9.
 ```
 
-Validaci?n del modelo.
+Validación del modelo.
 
 ```r
 rf_predicted <- predict(rf_Model10x10cv, testing)
@@ -497,18 +497,18 @@ confusionMatrix(rf_predicted, testing$Survived)
 ## 
 ```
 
-Obtenemos en un gr?fico cuales son las variables m?s importantes para clasificar a un pasajero como *"Died"*.
+Obtenemos en un gráfico cuales son las variables más importantes para clasificar a un pasajero como *"Died"*.
 
 ```r
 plot(varImp(rf_Model10x10cv),main="Who's running our forest?", col="lightseagreen")
 ```
 
-![](Introduccion_Caret_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
+![](figuras/unnamed-chunk-25-1.png)<!-- -->
 
 ## Logistic Regression
 
 ### Sin preprocesado
-Si usamos el m?todo de la regresi?n log?stica sin hacer ning?n preprocesado antes, tenemos los siguiente.
+Si usamos el método de la regresión log?stica sin hacer ningún preprocesado antes, tenemos los siguiente.
 
 ```r
 glm_Model10x10cv <- train(Survived ~ ., data=training, method="glm", trControl=fitControl, metric="Accuracy")
@@ -653,9 +653,9 @@ confusionMatrix(glm_PCA_predicted, testing$Survived)
 ```
 
 ## Comparativa
-Ya que no hemos cambiado la semilla de aleatorizaci?n, las particiones (de casos de training) utilizadas en los procesos de "resampling"-validaci?n de cada clasificador han sido las mismas: esto es, las "folds"-hojas del proceso de validaci?n cruzada han sido las mismas en ambos clasificadores.
+Ya que no hemos cambiado la semilla de aleatorización, las particiones (de casos de training) utilizadas en los procesos de "resampling"-validación de cada clasificador han sido las mismas: esto es, las "folds"-hojas del proceso de validación cruzada han sido las mismas en ambos clasificadores.
 
-Por lo tanto, podemos crear gr?ficos intuitivos como Bland-Altman. Para ello, hemos utilizado la funci?n *resamples* de R, el cual combina los resultados de dos modelos del mismo conjunto de datos (y, como a?adido, podemos hacer un resumen num?rico de los dos modelos y sus m?tricas de evaluaci?n utilizando la funci?n gen?rica de R *summary*). logramos el siguiente gr?fico que compara las m?tricas de *accuracy*:
+Por lo tanto, podemos crear gráficos intuitivos como Bland-Altman. Para ello, hemos utilizado la función *resamples* de R, el cual combina los resultados de dos modelos del mismo conjunto de datos (y, como añadido, podemos hacer un resumen numérico de los dos modelos y sus métricas de evaluación utilizando la función genérica de R *summary*). logramos el siguiente gráfico que compara las métricas de *accuracy*:
 
 ```r
 resamps=resamples(list(rf=rf_Model10x10cv,lr=glm_PCA_Model10x10cv))
@@ -685,7 +685,7 @@ summary(resamps)
 xyplot(resamps,what="BlandAltman")
 ```
 
-![](Introduccion_Caret_files/figure-html/unnamed-chunk-31-1.png)<!-- -->
+![](figuras/unnamed-chunk-31-1.png)<!-- -->
 
 ```r
 diffs<-diff(resamps)
@@ -712,4 +712,4 @@ summary(diffs)
 ## lr 0.02077
 ```
 
-Como vemos, con un nivel de significancia del 5%, se refuta la hip?tesis de que los dos modelos no tengan diferencias.
+Como vemos, con un nivel de significancia del 5%, se refuta la hipótesis de que los dos modelos no tengan diferencias.
