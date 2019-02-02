@@ -1,0 +1,286 @@
+---
+Title: "Introducci?n al paquete caret"
+output:
+  html_notebook:
+    highlight: tango
+    theme: flatly
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+# Cargar y verificar los datos
+Primero de todo, cargamos los paquetes que vamos a usar.
+```{r}
+library(lattice)
+library(ggplot2)
+library(caret)
+```
+
+Y despu?s, leemos el dataset.
+```{r}
+titanic <- read.csv("./train.csv", stringsAsFactors = FALSE, na.strings = c("NA", ""))
+str(titanic)
+```
+Nuestra base de datos tiene informaci?n sobre 12 variables diferentes de 891 pasajaeros del Titanic.
+
+| Variable Name | Description                       |
+| ------------- | --------------------------------- |
+| Survived      | Survived (1) or died (0)          |
+| Pclass        | Passenger's class                 |
+| Name          | Passenger's name                  |
+| Sex           | Passenger's sex                   |
+| Age           | Passenger's age                   |
+| SibSp         | Number of siblings/spouses aboard |
+| Parch         | Number of parents/children aboard |
+| Ticket        | Ticket number                     |
+| Fare          | Fare                              |
+| Cabin         | Cabin                             |
+| Embarked      | Port of embarkation               |
+
+
+# Preprocesamiento
+Antes de empezar a trabajar con nuestra base de datos hay que observar como es esta.
+
+Estudiamos cuantos valores unicos hay en cada variable.
+```{r}
+lapply(titanic, function(x) length(unique(x)))
+```
+La variable categ?rica *"PassengerId"* tiene un valor diferente para cada pasajero y en pricipio la descartamos porque no nos aporta ninguna informaci?n (habr?a que preguntar como se creo esa variable para saber si puede contener alguna informaci?n). Vamos a hacer lo mismo con la variable categ?rica *"Ticket"* porque tiene 681 valores diferentes. Con *"Name"* no lo vamos a hacer todav?a porque podemos extraer informaci?n.
+```{r}
+titanic <- subset(titanic, select = -c(PassengerId, Ticket))
+```
+
+Estudiamos tambi?n, cuantos valores perdidos hay en cada variable.
+```{r}
+sapply(titanic, function(x) sum(is.na(x)))
+```
+
+Vamos a quitar la variable *"Cabin"* porque tiene muchos valores perdidos y no sabemos como se podr?an imputar.
+```{r}
+titanic <- subset(titanic, select = -c(Cabin))
+```
+
+
+## Extraer informaci?n de *Name* y crear la nueva variable *"Title"*
+```{r}
+# Extraer el t?tulo del nombre
+titanic$Title <- gsub('(.*, )|(\\..*)', '', titanic$Name)
+
+# Contar personas en cada categor?a de t?tulo por sexo
+table(titanic$Sex, titanic$Title)
+
+# Juntamos los t?tulos poco frecuentes en la categor?a "rare"
+rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+                'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+
+# Tambi?n, recodificamos mlle, ms, and mme.
+titanic$Title[titanic$Title == 'Mlle']        <- 'Miss' 
+titanic$Title[titanic$Title == 'Ms']          <- 'Miss'
+titanic$Title[titanic$Title == 'Mme']         <- 'Mrs' 
+titanic$Title[titanic$Title %in% rare_title]  <- 'Rare Title'
+
+titanic$Title <- as.factor(titanic$Title)
+table(titanic$Sex, titanic$Title)
+```
+
+Ya hemos extraido informaci?n de la variable *"Name"* y no nos hace falta m?s.
+```{r}
+titanic <- subset(titanic, select = -c(Name))
+```
+
+## Imputar valores perdidos de *"Age"*
+Vamos a imputar los valores perdidos en la variable *"Age"* usando la mediana en *"Age"* dependiendo de *"Title"*.
+```{r}
+titanic$Age[which(titanic$Title=="Master" & is.na(titanic$Age))] <- 
+  median(titanic$Age[which(titanic$Title=="Master")], na.rm = TRUE)
+titanic$Age[which(titanic$Title=="Miss" & is.na(titanic$Age))] <- 
+  median(titanic$Age[which(titanic$Title=="Miss")], na.rm = TRUE)
+titanic$Age[which(titanic$Title=="Mr" & is.na(titanic$Age))] <- 
+  median(titanic$Age[which(titanic$Title=="Mr")], na.rm = TRUE)
+titanic$Age[which(titanic$Title=="Mrs" & is.na(titanic$Age))] <- 
+  median(titanic$Age[which(titanic$Title=="Mrs")], na.rm = TRUE)
+titanic$Age[which(titanic$Title=="Rare Title" & is.na(titanic$Age))] <- 
+  median(titanic$Age[which(titanic$Title=="Rare Title")], na.rm = TRUE)
+sum(is.na(titanic$Age))
+```
+
+## Imputar valores perdidos en *"Embarked"*
+Hay dos valores perdidos en la variable *"Embarked"*.
+```{r}
+table(titanic$Embarked)
+```
+
+Vamos a inferir estos dos valores usando la informaci?n de las variables *"Fare"* y *"Pclass"*, que puede que sea la m?s relevante.
+```{r}
+(indexes <- which(is.na(titanic$Embarked)))
+titanic$Fare[indexes]
+titanic$Pclass[indexes]
+```
+Como podemos observar, los dos pasajeros con valor perdido en la variable *"Embarked"* son de la *"Pclass"* 1 y tienen el valor de *"Fare"* 80.
+```{r}
+primera <- titanic[which(titanic$Pclass==1),]
+boxplot(primera$Fare~primera$Embarked, col="lightseagreen", ylab="Fare", xlab="Embarked")
+title(main = "Fare dependiendo de Embarked para los pasajeros de Pclass=1")
+abline(h=80, col="red")
+```
+Como podemos ver, el valor que mejor se ajusta es "C". Por lo tanto,
+```{r}
+titanic$Embarked[indexes] <- "C"
+titanic$Embarked <- factor(titanic$Embarked)
+sum(is.na(titanic$Embarked))
+```
+
+## Creamos algunas nuevas variables m?s
+### La nueva variable *"FSize"*
+Vamos a crear una variable que nos dija el tama?o de la familia de cada pasajero, incluyendo en ese valor al pasajero.
+```{r}
+titanic$Fsize <- titanic$SibSp + titanic$Parch + 1
+```
+
+### La nueva variable *"Child"*
+Esta variable nos indicar? si el pasajero es un ni?o o un adulto.
+```{r}
+titanic$Child[titanic$Age < 18] <- 'Child'
+titanic$Child[titanic$Age >= 18] <- 'Adult'
+titanic$Child  <- factor(titanic$Child)
+```
+
+### La nueva variable *"Mother"*
+Esta variable nos indicar? si la pasajera es madre o no.
+```{r}
+titanic$Mother <- 'Not Mother'
+titanic$Mother[titanic$Sex == 'female' & titanic$Parch > 0 & 
+                 titanic$Age > 18 & titanic$Title != 'Miss'] <- 'Mother'
+titanic$Mother <- factor(titanic$Mother)
+```
+
+# An?lisis descriptivo
+
+```{r}
+titanic$Survived <- factor(titanic$Survived, levels=c(0,1))
+levels(titanic$Survived) <- c("Died", "Survived")
+titanic$Pclass <- as.factor(titanic$Pclass)
+levels(titanic$Pclass) <- c("1st Class", "2nd Class", "3rd Class")
+titanic$Sex <- as.factor(titanic$Sex)
+str(titanic)
+```
+
+```{r}
+for (i in (1:dim(titanic)[2])[-c(4,7)]) {
+  print(names(titanic)[i])
+  print(table(titanic[,i]))
+  cat(round(prop.table(table(titanic[,i])),3),"\n\n")
+}
+```
+
+Para las variables *Age* y *Fare* vamos a dibujar el histograma y la diagrama de cajas que nos dan informaci?n de una forma m?s visual.
+```{r}
+par(mfrow=c(1,2))
+hist(titanic$Age, main='Age', ylab='Frecuencias', xlab='Edad', col='lightseagreen')
+boxplot(titanic$Age, main='Age', ylab='Edad', col='lightseagreen')
+hist(titanic$Fare, main='Fare', ylab='Frecuencias', xlab='Tarifa', col='lightseagreen')
+boxplot(titanic$Fare, main='Fare', ylab='Tarifa', col='lightseagreen')
+par(mfrow=c(1,1))
+```
+
+
+# Creaci?n de los modelos con el paquete Caret
+Antes de aprender un modelo de clasificaci?n es necesario definir las instancias de entrenamiento y test, que dar?n forma a nuestro modelado. Hay tres opciones de para definir estas instancias.
+```{r}
+?createDataPartition
+# A series of test/training partitions are created using createDataPartition while createResample creates one or more bootstrap samples. createFolds splits the data into k groups while createTimeSlices creates cross-validation split for series data. groupKFold splits the data based on a grouping factor.
+```
+
+Creamos los conjuntos de *train* y *test* con la funci?n *createDataPartition* y la relaci?n de porcentaje de conjunto de datos para cada conjunto sera 70/30.
+
+(Fijamos una semilla para futuras generaciones de numeros aleatorios)
+```{r}
+set.seed(107)
+inTrain <- createDataPartition(y=titanic$Survived,p=.7,list=FALSE)
+training <- titanic[inTrain,]
+testing <- titanic[-inTrain,]
+```
+
+Usaremos *repeated K-fold cross-validation*.
+```{r}
+fitControl <- trainControl(## 10-fold CV
+                           method = "repeatedcv",
+                           number = 10,
+                           ## repeated ten times
+                           repeats = 10)
+```
+
+## Random Forest
+For random forests since one feature is never compared in magnitude to other features, the ranges don't matter. It's only the range of one feature that is split at each stage.
+```{r}
+rf_Model10x10cv <- train(Survived ~ ., data=training, method="rf", trControl=fitControl, metric = "Accuracy")
+rf_Model10x10cv
+```
+
+Validaci?n del modelo.
+```{r}
+rf_predicted <- predict(rf_Model10x10cv, testing)
+confusionMatrix(rf_predicted, testing$Survived)
+```
+
+Obtenemos en un gr?fico cuales son las variables m?s importantes para clasificar a un pasajero como *"Died"*.
+```{r}
+plot(varImp(rf_Model10x10cv),main="Who's running our forest?", col="lightseagreen")
+```
+
+## Logistic Regression
+
+### Sin preprocesado
+Si usamos el m?todo de la regresi?n log?stica sin hacer ning?n preprocesado antes, tenemos los siguiente.
+```{r}
+glm_Model10x10cv <- train(Survived ~ ., data=training, method="glm", trControl=fitControl, metric="Accuracy")
+glm_Model10x10cv
+```
+Como podemos ver, R nos da una advertencia donde dice *prediction from a rank-deficient fit may be misleading*. Esto ocurre porque tenemos que quitar variables predictoras, ya que el rango de la matriz es mas baja que la cantidad de variables predictoras que hemos metido. Es decir, hay variables que son combinaciones lineales de otras.
+
+### Quitando variables linealmente dependientes
+Si estudiamos y quitamos estas variables (*"FSize"* que es combinaci?n de *"SibSp"* y *"Parch"*; y *"Sex"* que est? muy relacionada con *"Title"*) y hacemos de nuevo el training:
+```{r}
+glm_Model10x10cv <- train(Survived ~ ., data=training[,-c(3,10)], method="glm", trControl=fitControl, metric="Accuracy")
+glm_Model10x10cv
+```
+
+```{r}
+glm_predicted <- predict(glm_Model10x10cv, testing[,-c(10)])
+confusionMatrix(glm_predicted, testing$Survived)
+```
+
+### Haciendo PCA
+```{r}
+preProc <- preProcess(training,method="pca",pcaComp=2)
+trainingPCA <- predict(preProc,training)
+glm_PCA_Model10x10cv <- train(Survived ~ ., data=trainingPCA[,-c(3)], method="glm", trControl=fitControl, metric="Accuracy")
+glm_PCA_Model10x10cv
+```
+
+```{r}
+testingPCA <- predict(preProc,testing)
+glm_PCA_predicted <- predict(glm_PCA_Model10x10cv, testingPCA[,-c(3)])
+confusionMatrix(glm_PCA_predicted, testing$Survived)
+```
+
+## Comparativa
+Ya que no hemos cambiado la semilla de aleatorizaci?n, las particiones (de casos de training) utilizadas en los procesos de "resampling"-validaci?n de cada clasificador han sido las mismas: esto es, las "folds"-hojas del proceso de validaci?n cruzada han sido las mismas en ambos clasificadores.
+
+Por lo tanto, podemos crear gr?ficos intuitivos como Bland-Altman. Para ello, hemos utilizado la funci?n *resamples* de R, el cual combina los resultados de dos modelos del mismo conjunto de datos (y, como a?adido, podemos hacer un resumen num?rico de los dos modelos y sus m?tricas de evaluaci?n utilizando la funci?n gen?rica de R *summary*). logramos el siguiente gr?fico que compara las m?tricas de *accuracy*:
+```{r}
+resamps=resamples(list(rf=rf_Model10x10cv,lr=glm_PCA_Model10x10cv))
+summary(resamps)
+xyplot(resamps,what="BlandAltman")
+diffs<-diff(resamps)
+summary(diffs)
+```
+
+Como vemos, con un nivel de significancia del 5%, se refuta la hip?tesis de que los dos modelos no tengan diferencias.
