@@ -236,6 +236,7 @@ abline(h=80, col="red")
 ```
 
 ![](figuras/unnamed-chunk-12-1.png)<!-- -->
+
 Como podemos ver, el valor que mejor se ajusta es "C". Por lo tanto,
 
 ```r
