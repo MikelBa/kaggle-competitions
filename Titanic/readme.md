@@ -382,14 +382,14 @@ hist(titanic$Age, main='Age', ylab='Frecuencias', xlab='Edad', col='lightseagree
 boxplot(titanic$Age, main='Age', ylab='Edad', col='lightseagreen')
 ```
 
-![](Introduccion_Caret_files/figure-html/unnamed-chunk-19-1.png)<!-- -->
+![](figuras/unnamed-chunk-19-1.png)<!-- -->
 
 ```r
 hist(titanic$Fare, main='Fare', ylab='Frecuencias', xlab='Tarifa', col='lightseagreen')
 boxplot(titanic$Fare, main='Fare', ylab='Tarifa', col='lightseagreen')
 ```
 
-![](Introduccion_Caret_files/figure-html/unnamed-chunk-19-2.png)<!-- -->
+![](figuras/unnamed-chunk-19-2.png)<!-- -->
 
 ```r
 par(mfrow=c(1,1))
