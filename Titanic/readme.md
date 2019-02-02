@@ -1,19 +1,3 @@
----
-Title: "Introducci?n al paquete caret"
-output:
-  html_document:
-    keep_md: true
-    highlight: tango
-    theme: flatly
-    number_sections: yes
-    toc: yes
-    toc_float:
-      collapsed: no
-      smooth_scroll: yes
----
-
-
-
 # Cargar y verificar los datos
 Primero de todo, cargamos los paquetes que vamos a usar.
 
@@ -23,7 +7,7 @@ library(ggplot2)
 library(caret)
 ```
 
-Y despu?s, leemos el dataset.
+Y después, leemos el dataset.
 
 ```r
 titanic <- read.csv("./train.csv", stringsAsFactors = FALSE, na.strings = c("NA", ""))
